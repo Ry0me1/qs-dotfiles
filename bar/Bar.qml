@@ -88,530 +88,303 @@ Scope {
 
       anchors {
         top: true
-        left: true
         right: true
+        bottom: true
       }
 
-      implicitHeight: 32
+      implicitWidth: 400
       color: root.theme.bgBase
 
       Item {
+  anchors.fill: parent
+  anchors.margins: 12
+
+  ColumnLayout {
+    anchors.fill: parent
+    spacing: 12
+
+    // ── 時計 ──
+    Rectangle {
+      Layout.fillWidth: true
+      height: 60
+      radius: 12
+      color: root.theme.bgSurface
+
+      Column {
+        anchors.centerIn: parent
+        spacing: 4
+
+        Text {
+          anchors.horizontalCenter: parent.horizontalCenter
+          text: Time.timeString
+          color: root.theme.textPrimary
+          font.pixelSize: 24
+          font.bold: true
+          font.family: root.font
+        }
+        Text {
+          anchors.horizontalCenter: parent.horizontalCenter
+          text: Time.dateString
+          color: root.theme.textSecondary
+          font.pixelSize: 12
+          font.family: root.font
+        }
+      }
+    }
+
+    // ── ワークスペース ──
+    Rectangle {
+      Layout.fillWidth: true
+      height: 40
+      radius: 12
+      color: root.theme.bgSurface
+
+      Row {
+        anchors.centerIn: parent
+        spacing: 4
+
+        Repeater {
+          model: Hyprland.workspaces
+
+          Rectangle {
+            id: wsPill
+            required property var modelData
+            property bool urgentBlink: false
+
+            width: modelData.focused ? 32 : 24
+            height: 24
+            radius: 12
+            color: modelData.focused ? root.theme.accentPrimary :
+                   modelData.urgent && urgentBlink ? root.theme.accentRed : root.theme.bgBase
+
+            Behavior on color { ColorAnimation { duration: 150 } }
+
+            SequentialAnimation {
+              loops: Animation.Infinite
+              running: wsPill.modelData.urgent && !wsPill.modelData.focused
+              PropertyAction { target: wsPill; property: "urgentBlink"; value: true }
+              PauseAnimation { duration: 500 }
+              PropertyAction { target: wsPill; property: "urgentBlink"; value: false }
+              PauseAnimation { duration: 500 }
+              onStopped: wsPill.urgentBlink = false
+            }
+
+            Text {
+              anchors.centerIn: parent
+              text: wsPill.modelData.id
+              color: wsPill.modelData.focused ? root.theme.bgBase : root.theme.textPrimary
+              font.pixelSize: 11
+              font.family: root.font
+              font.bold: wsPill.modelData.focused
+            }
+
+            MouseArea {
+              anchors.fill: parent
+              onClicked: wsPill.modelData.activate()
+            }
+
+            Behavior on width { NumberAnimation { duration: 150 } }
+          }
+        }
+      }
+    }
+
+    // ── Now Playing ──
+    Rectangle {
+      Layout.fillWidth: true
+      height: 48
+      radius: 12
+      color: root.theme.bgSurface
+      visible: root.activePlayer !== null
+
+      Column {
+        anchors.centerIn: parent
+        spacing: 2
+        width: parent.width - 24
+
+        Text {
+          anchors.horizontalCenter: parent.horizontalCenter
+          text: root.activePlayer ? (root.activePlayer.trackTitle || "") : ""
+          color: root.theme.textPrimary
+          font.pixelSize: 12
+          font.family: root.font
+          elide: Text.ElideRight
+          width: parent.width
+          horizontalAlignment: Text.AlignHCenter
+        }
+        Text {
+          anchors.horizontalCenter: parent.horizontalCenter
+          text: root.activePlayer ? (root.activePlayer.trackArtist || "") : ""
+          color: root.theme.textSecondary
+          font.pixelSize: 10
+          font.family: root.font
+          elide: Text.ElideRight
+          width: parent.width
+          horizontalAlignment: Text.AlignHCenter
+        }
+      }
+
+      MouseArea {
         anchors.fill: parent
-        anchors.leftMargin: 10
-        anchors.rightMargin: 10
+        onClicked: root.activePlayer.togglePlaying()
+      }
+    }
 
-        // Left section: Time + Workspaces + Now Playing
+    // ── スペーサー（下部を押し下げる） ──
+    Item { Layout.fillHeight: true }
+
+    // ── システム情報（音量・明るさ・CPU・ネットワーク・バッテリー・温度） ──
+    RowLayout {
+      Layout.fillWidth: true
+      spacing: 6
+
+      // 音量
+      Rectangle {
+        Layout.preferredWidth: 65
+        height: 32
+        radius: 8
+        color: root.theme.bgSurface
+
         Row {
-          id: leftSection
-          anchors.left: parent.left
-          anchors.verticalCenter: parent.verticalCenter
-          spacing: 8
-
-          // Time
-          Rectangle {
-            height: 24
-            width: timeDate.width + 16
-            radius: 12
-            color: root.theme.bgSurface
-
-            Row {
-              id: timeDate
-              anchors.centerIn: parent
-              spacing: 8
-
-              Text {
-                anchors.verticalCenter: parent.verticalCenter
-                text: ""
-                color: root.theme.accentPrimary
-                font.pixelSize: 14
-                font.family: root.font
-              }
-
-              Text {
-                anchors.verticalCenter: parent.verticalCenter
-                text: Time.timeString
-                color: root.theme.textPrimary
-                font.pixelSize: 12
-                font.family: root.font
-              }
-
-              Text {
-                anchors.verticalCenter: parent.verticalCenter
-                text: Time.dateString
-                color: root.theme.textSecondary
-                font.pixelSize: 12
-                font.family: root.font
-              }
-            }
-          }
-
-          // Workspaces
-          Row {
-            spacing: 4
-
-            Repeater {
-              model: Hyprland.workspaces
-
-              Rectangle {
-                id: wsPill
-                required property var modelData
-                property bool urgentBlink: false
-
-                Accessible.role: Accessible.Button
-                Accessible.name: "Workspace " + modelData.id + (modelData.focused ? ", active" : "") + (modelData.urgent ? ", urgent" : "")
-
-                width: modelData.focused ? 32 : 24
-                height: 24
-                radius: 12
-                color: modelData.focused ? root.theme.accentPrimary :
-                       modelData.urgent && urgentBlink ? root.theme.accentRed : root.theme.bgSurface
-
-                Behavior on color {
-                  ColorAnimation { duration: 150 }
-                }
-
-                SequentialAnimation {
-                  loops: Animation.Infinite
-                  running: wsPill.modelData.urgent && !wsPill.modelData.focused
-
-                  PropertyAction { target: wsPill; property: "urgentBlink"; value: true }
-                  PauseAnimation { duration: 500 }
-                  PropertyAction { target: wsPill; property: "urgentBlink"; value: false }
-                  PauseAnimation { duration: 500 }
-
-                  onStopped: wsPill.urgentBlink = false
-                }
-
-                Text {
-                  anchors.centerIn: parent
-                  text: wsPill.modelData.id
-                  color: wsPill.modelData.focused ? root.theme.bgBase : root.theme.textPrimary
-                  font.pixelSize: 11
-                  font.family: root.font
-                  font.bold: wsPill.modelData.focused
-                }
-
-                MouseArea {
-                  anchors.fill: parent
-                  onClicked: wsPill.modelData.activate()
-                }
-
-                Behavior on width {
-                  NumberAnimation { duration: 150 }
-                }
-              }
-            }
-          }
-
-          // Now Playing
-          Rectangle {
-            height: 24
-            width: nowPlayingContent.width + 16
-            radius: 12
-            color: root.theme.bgSurface
-            visible: root.activePlayer !== null
-
-            Accessible.role: Accessible.Button
-            Accessible.name: {
-              if (!root.activePlayer) return "No media";
-              const artist = root.activePlayer.trackArtist || "";
-              const title = root.activePlayer.trackTitle || "";
-              return "Now playing: " + (artist ? artist + " - " : "") + title;
-            }
-
-            Row {
-              id: nowPlayingContent
-              anchors.verticalCenter: parent.verticalCenter
-              anchors.left: parent.left
-              anchors.leftMargin: 8
-              spacing: 6
-
-              Text {
-                anchors.verticalCenter: parent.verticalCenter
-                text: root.activePlayer && root.activePlayer.isPlaying ? "󰐊" : "󰏤"
-                color: root.theme.accentPrimary
-                font.pixelSize: 14
-                font.family: root.font
-              }
-
-              Text {
-                anchors.verticalCenter: parent.verticalCenter
-                text: {
-                  if (!root.activePlayer) return "";
-                  const artist = root.activePlayer.trackArtist || "";
-                  const title = root.activePlayer.trackTitle || "";
-                  return artist ? artist + " - " + title : title;
-                }
-                color: root.theme.textPrimary
-                font.pixelSize: 11
-                font.family: root.font
-                elide: Text.ElideRight
-                width: Math.min(implicitWidth, 200)
-              }
-            }
-
-            MouseArea {
-              anchors.fill: parent
-              cursorShape: Qt.PointingHandCursor
-              onClicked: root.activePlayer.togglePlaying()
-            }
-          }
-        }
-
-        // Center section: Window Title (truly centered in bar)
-        Item {
           anchors.centerIn: parent
-          height: parent.height
-          width: Math.max(0, parent.width - 2 * Math.max(leftSection.width, rightSection.width) - 32)
-
+          spacing: 8
           Text {
-            Accessible.role: Accessible.StaticText
-            Accessible.name: "Active window: " + text
-            text: Hyprland.activeToplevel ? Hyprland.activeToplevel.title : ""
-            color: root.theme.textPrimary
-            font.pixelSize: 13
+            text: {
+              const sink = Pipewire.defaultAudioSink;
+              if (!sink || !sink.audio || sink.audio.muted || sink.audio.volume <= 0) return "󰖁";
+              if (sink.audio.volume < 0.33) return "󰕿";
+              if (sink.audio.volume < 0.66) return "󰖀";
+              return "󰕾";
+            }
+            color: root.theme.accentPrimary
+            font.pixelSize: 14
             font.family: root.font
-            elide: Text.ElideRight
-            width: Math.min(implicitWidth, parent.width)
-            anchors.centerIn: parent
+          }
+          Text {
+            text: {
+              const sink = Pipewire.defaultAudioSink;
+              if (!sink || !sink.audio) return "–";
+              if (sink.audio.muted) return "Mute";
+              return Math.round(sink.audio.volume * 100) + "%";
+            }
+            color: root.theme.textPrimary
+            font.pixelSize: 12
+            font.family: root.font
           }
         }
 
-        // Right section: System Info + System Tray
+        MouseArea {
+          anchors.fill: parent
+          onClicked: {
+            const sink = Pipewire.defaultAudioSink;
+            if (sink && sink.audio) sink.audio.muted = !sink.audio.muted;
+          }
+          onWheel: (wheel) => {
+            const sink = Pipewire.defaultAudioSink;
+            if (!sink || !sink.audio) return;
+            const delta = wheel.angleDelta.y > 0 ? 0.05 : -0.05;
+            sink.audio.volume = Math.max(0, Math.min(1.5, sink.audio.volume + delta));
+          }
+        }
+      }
+
+      // 明るさ
+      Rectangle {
+        Layout.preferredWidth: 65
+        height: 32
+        radius: 8
+        color: root.theme.bgSurface
+        visible: brightnessFile.path !== ""
+
         Row {
-          id: rightSection
-          anchors.right: parent.right
-          anchors.verticalCenter: parent.verticalCenter
+          anchors.centerIn: parent
           spacing: 8
-
-          // Volume
-          Rectangle {
-            height: 24
-            width: volContent.width + 12
-            radius: 12
-            color: root.theme.bgSurface
-
-            Accessible.role: Accessible.StaticText
-            Accessible.name: {
-              const sink = Pipewire.defaultAudioSink;
-              if (!sink || !sink.audio) return "Volume";
-              if (sink.audio.muted) return "Volume: muted";
-              return "Volume: " + Math.round(sink.audio.volume * 100) + "%";
-            }
-
-            Row {
-              id: volContent
-              anchors.centerIn: parent
-              spacing: 6
-
-              Text {
-                anchors.verticalCenter: parent.verticalCenter
-                text: {
-                  const sink = Pipewire.defaultAudioSink;
-                  if (!sink || !sink.audio || sink.audio.muted || sink.audio.volume <= 0) return "󰖁";
-                  if (sink.audio.volume < 0.33) return "󰕿";
-                  if (sink.audio.volume < 0.66) return "󰖀";
-                  return "󰕾";
-                }
-                color: {
-                  const sink = Pipewire.defaultAudioSink;
-                  if (!sink || !sink.audio || sink.audio.muted) return root.theme.textMuted;
-                  return root.theme.accentPrimary;
-                }
-                font.pixelSize: 14
-                font.family: root.font
-              }
-
-              Text {
-                anchors.verticalCenter: parent.verticalCenter
-                text: {
-                  const sink = Pipewire.defaultAudioSink;
-                  if (!sink || !sink.audio) return "–";
-                  if (sink.audio.muted) return "Mute";
-                  return Math.round(sink.audio.volume * 100) + "%";
-                }
-                color: root.theme.textPrimary
-                font.pixelSize: 11
-                font.family: root.font
-              }
-            }
-
-            MouseArea {
-              anchors.fill: parent
-              cursorShape: Qt.PointingHandCursor
-              acceptedButtons: Qt.LeftButton
-              onClicked: {
-                const sink = Pipewire.defaultAudioSink;
-                if (sink && sink.audio) sink.audio.muted = !sink.audio.muted;
-              }
-              onWheel: (wheel) => {
-                const sink = Pipewire.defaultAudioSink;
-                if (!sink || !sink.audio) return;
-                const delta = wheel.angleDelta.y > 0 ? 0.05 : -0.05;
-                sink.audio.volume = Math.max(0, Math.min(1.5, sink.audio.volume + delta));
-              }
-            }
+          Text {
+            text: "󰃠"
+            color: root.theme.accentOrange
+            font.pixelSize: 14
+            font.family: root.font
           }
-
-          // Brightness
-          Rectangle {
-            height: 24
-            width: brightContent.width + 12
-            radius: 12
-            color: root.theme.bgSurface
-            visible: brightnessFile.path !== ""
-
-            Accessible.role: Accessible.StaticText
-            Accessible.name: "Brightness: " + Math.round(root.brightnessValue * 100) + "%"
-
-            Row {
-              id: brightContent
-              anchors.centerIn: parent
-              spacing: 6
-
-              Text {
-                anchors.verticalCenter: parent.verticalCenter
-                text: "󰃠"
-                color: root.theme.accentOrange
-                font.pixelSize: 14
-                font.family: root.font
-              }
-
-              Text {
-                anchors.verticalCenter: parent.verticalCenter
-                text: Math.round(root.brightnessValue * 100) + "%"
-                color: root.theme.textPrimary
-                font.pixelSize: 11
-                font.family: root.font
-              }
-            }
-
-            MouseArea {
-              anchors.fill: parent
-              cursorShape: Qt.PointingHandCursor
-              onWheel: (wheel) => {
-                brightnessSetProc.command = wheel.angleDelta.y > 0
-                  ? ["brightnessctl", "set", "5%+"]
-                  : ["brightnessctl", "set", "5%-"];
-                brightnessSetProc.running = true;
-              }
-            }
+          Text {
+            text: Math.round(root.brightnessValue * 100) + "%"
+            color: root.theme.textPrimary
+            font.pixelSize: 12
+            font.family: root.font
           }
+        }
 
-          // System Info
-          Row {
-            id: sysInfo
+        MouseArea {
+          anchors.fill: parent
+          onWheel: (wheel) => {
+            brightnessSetProc.command = wheel.angleDelta.y > 0
+              ? ["brightnessctl", "set", "5%+"]
+              : ["brightnessctl", "set", "5%-"];
+            brightnessSetProc.running = true;
+          }
+        }
+      }
 
-            readonly property color batteryColor: {
+      // ネットワーク
+      Rectangle {
+        Layout.fillWidth: true
+        height: 32
+        radius: 8
+        color: root.theme.bgSurface
+
+        Row {
+          anchors.centerIn: parent
+          spacing: 8
+          Text {
+            text: {
+              if (SystemInfo.networkType === "ethernet") return "󰈀"
+              if (SystemInfo.networkType === "wifi") return "󰖩"
+              return "󰖪"
+            }
+            color: SystemInfo.networkType === "disconnected" ? root.theme.textMuted : root.theme.accentGreen
+            font.pixelSize: 14
+            font.family: root.font
+          }
+          Text {
+            text: SystemInfo.networkInfo
+            color: root.theme.textPrimary
+            font.pixelSize: 12
+            font.family: root.font
+          }
+        }
+      }
+
+      // バッテリー
+      Rectangle {
+        Layout.preferredWidth: 65
+        height: 32
+        radius: 8
+        color: root.theme.bgSurface
+
+        Row {
+          anchors.centerIn: parent
+          spacing: 8
+          Text {
+            text: SystemInfo.batteryIcon
+            color: {
               if (SystemInfo.batteryCharging) return root.theme.accentGreen;
               if (SystemInfo.batteryLevelRaw > 20) return root.theme.batteryGood;
               if (SystemInfo.batteryLevelRaw > 10) return root.theme.batteryWarning;
               return root.theme.batteryCritical;
             }
-
-            spacing: 4
-
-            // CPU
-            Rectangle {
-              height: 24
-              width: cpuContent.width + 12
-              radius: 12
-              color: root.theme.bgSurface
-              Accessible.role: Accessible.StaticText
-              Accessible.name: "CPU: " + SystemInfo.cpuUsage
-
-              Row {
-                id: cpuContent
-                anchors.centerIn: parent
-                spacing: 6
-
-                Text {
-                  anchors.verticalCenter: parent.verticalCenter
-                  text: "󰻠"
-                  color: root.theme.accentOrange
-                  font.pixelSize: 14
-                  font.family: root.font
-                }
-                Text {
-                  anchors.verticalCenter: parent.verticalCenter
-                  text: SystemInfo.cpuUsage
-                  color: root.theme.textPrimary
-                  font.pixelSize: 11
-                  font.family: root.font
-                }
-              }
-            }
-
-            // Network
-            Rectangle {
-              height: 24
-              width: netContent.width + 12
-              radius: 12
-              color: root.theme.bgSurface
-              Accessible.role: Accessible.StaticText
-              Accessible.name: {
-                if (SystemInfo.networkType === "ethernet") return "Network: Ethernet"
-                if (SystemInfo.networkType === "wifi") return "Network: WiFi " + SystemInfo.networkInfo
-                return "Network: Disconnected"
-              }
-
-              Row {
-                id: netContent
-                anchors.centerIn: parent
-                spacing: 6
-
-                Text {
-                  anchors.verticalCenter: parent.verticalCenter
-                  text: {
-                    if (SystemInfo.networkType === "ethernet") return "󰈀"
-                    if (SystemInfo.networkType === "wifi") return "󰖩"
-                    return "󰖪"
-                  }
-                  color: SystemInfo.networkType === "disconnected" ? root.theme.textMuted : root.theme.accentGreen
-                  font.pixelSize: 14
-                  font.family: root.font
-                }
-                Text {
-                  anchors.verticalCenter: parent.verticalCenter
-                  text: SystemInfo.networkInfo
-                  color: root.theme.textPrimary
-                  font.pixelSize: 11
-                  font.family: root.font
-                }
-              }
-            }
-
-            // Battery
-            Rectangle {
-              height: 24
-              width: battContent.width + 12
-              radius: 12
-              color: root.theme.bgSurface
-              Accessible.role: Accessible.StaticText
-              Accessible.name: "Battery: " + SystemInfo.batteryLevel
-
-              Row {
-                id: battContent
-                anchors.centerIn: parent
-                spacing: 6
-
-                Text {
-                  anchors.verticalCenter: parent.verticalCenter
-                  text: SystemInfo.batteryIcon
-                  color: sysInfo.batteryColor
-                  font.pixelSize: 14
-                  font.family: root.font
-                }
-                Text {
-                  anchors.verticalCenter: parent.verticalCenter
-                  text: SystemInfo.batteryLevel
-                  color: root.theme.textPrimary
-                  font.pixelSize: 11
-                  font.family: root.font
-                }
-              }
-            }
-
-            // Temperature
-            Rectangle {
-              height: 24
-              width: tempContent.width + 12
-              radius: 12
-              color: root.theme.bgSurface
-              Accessible.role: Accessible.StaticText
-              Accessible.name: "Temperature: " + SystemInfo.temperature
-
-              Row {
-                id: tempContent
-                anchors.centerIn: parent
-                spacing: 6
-
-                Text {
-                  anchors.verticalCenter: parent.verticalCenter
-                  text: "󰔏"
-                  color: root.theme.accentRed
-                  font.pixelSize: 14
-                  font.family: root.font
-                }
-                Text {
-                  anchors.verticalCenter: parent.verticalCenter
-                  text: SystemInfo.temperature
-                  color: root.theme.textPrimary
-                  font.pixelSize: 11
-                  font.family: root.font
-                }
-              }
-            }
+            font.pixelSize: 14
+            font.family: root.font
           }
-
-          // System Tray
-          // There's an issue that some tray not display correctly.
-          // https://github.com/quickshell-mirror/quickshell/issues/26
-          // https://github.com/quickshell-mirror/quickshell/pull/777
-          Rectangle {
-            implicitHeight: 24
-            implicitWidth: trayIcons.implicitWidth + 4
-            radius: 12
-            color: root.theme.bgSurface
-
-            RowLayout {
-              id: trayIcons
-              anchors.centerIn: parent
-              spacing: 2
-
-              Repeater {
-                model: SystemTray.items
-
-                MouseArea {
-                  id: trayDelegate
-                  required property SystemTrayItem modelData
-
-                  Accessible.role: Accessible.Button
-                  Accessible.name: modelData.tooltipTitle || modelData.title || "System tray item"
-
-                  Layout.preferredWidth: 24
-                  Layout.preferredHeight: 24
-
-                  acceptedButtons: Qt.LeftButton | Qt.RightButton | Qt.MiddleButton
-
-                  onClicked: (mouse) => {
-                    if (mouse.button === Qt.LeftButton) {
-                      modelData.activate()
-                    } else if (mouse.button === Qt.RightButton) {
-                      if (modelData.hasMenu) {
-                        menuAnchor.open()
-                      }
-                    } else if (mouse.button === Qt.MiddleButton) {
-                      modelData.secondaryActivate()
-                    }
-                  }
-
-                  IconImage {
-                    anchors.centerIn: parent
-                    source: trayDelegate.modelData.icon
-                    implicitSize: 16
-                  }
-
-                  QsMenuAnchor {
-                    id: menuAnchor
-                    menu: trayDelegate.modelData.menu
-
-                    anchor.window: trayDelegate.QsWindow.window
-                    anchor.adjustment: PopupAdjustment.Flip
-                    anchor.onAnchoring: {
-                      const window = trayDelegate.QsWindow.window;
-                      const widgetRect = window.contentItem.mapFromItem(
-                        trayDelegate, 0, trayDelegate.height,
-                        trayDelegate.width, trayDelegate.height);
-                      menuAnchor.anchor.rect = widgetRect;
-                    }
-                  }
-                }
-              }
-            }
+          Text {
+            text: SystemInfo.batteryLevel
+            color: root.theme.textPrimary
+            font.pixelSize: 12
+            font.family: root.font
           }
         }
       }
+    }
+  }
+}
 
     }
   }

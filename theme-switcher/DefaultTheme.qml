@@ -1,10 +1,10 @@
 import QtQuick
 
 QtObject {
-  readonly property color bgBase: "#1a1b26"
-  readonly property color bgSurface: "#24283b"
+  readonly property color bgBase: '#000000'
+  readonly property color bgSurface: '#000000'
   readonly property color bgOverlay: "#88000000"
-  readonly property color bgHover: "#1e2235"
+  readonly property color bgHover: '#000000'
   readonly property color bgSelected: "#283457"
   readonly property color bgBorder: "#32364a"
 
