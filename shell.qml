@@ -24,5 +24,4 @@ Scope {
   WallpaperManager { theme: ts.theme }
   OSD { theme: ts.theme }
   MonitorManager { theme: ts.theme }
-  CaffeineToggle { theme: ts.theme }
 }

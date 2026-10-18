@@ -43,18 +43,15 @@ Scope {
 
             anchors {
                 top: true
-                right: true
             }
-
             implicitWidth: 380
             implicitHeight: notifColumn.implicitHeight + 20
 
             ColumnLayout {
                 id: notifColumn
                 anchors.top: parent.top
-                anchors.right: parent.right
+                anchors.horizontalCenter: parent.horizontalCenter
                 anchors.topMargin: 10
-                anchors.rightMargin: 10
                 width: 360
                 spacing: 8
 

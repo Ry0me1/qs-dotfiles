@@ -451,7 +451,7 @@ Singleton {
     property var themes: [
         {
             name: "Night", family: "Tokyo Night",
-            bgBase: "#1a1b26", bgSurface: "#24283b", bgHover: "#1e2235",
+            bgBase: '#000000', bgSurface: '#000000', bgHover: "#1e2235",
             bgSelected: "#283457", bgBorder: "#32364a",
             textPrimary: "#c0caf5", textSecondary: "#a9b1d6", textMuted: "#565f89",
             accentPrimary: "#7aa2f7", accentCyan: "#7dcfff",

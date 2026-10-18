@@ -78,6 +78,27 @@ Scope {
     }
   }
 
+  property string imeName: "IME"
+
+  Process {
+    id: imeProc
+    command: ["fcitx5-remote", "-n"]
+    running: false
+    stdout: StdioCollector {
+      onStreamFinished: {
+      const name = text.trim();
+      if (name !== "") root.imeName = name;
+      }
+    }
+  }
+
+  Timer {
+    interval: 1000
+    running: true
+    repeat: true
+    onTriggered: imeProc.running = true
+  }
+
   Variants {
     model: Quickshell.screens
 
@@ -92,7 +113,7 @@ Scope {
         bottom: true
       }
 
-      implicitWidth: 400
+      implicitWidth: 350
       color: root.theme.bgBase
 
       Item {
@@ -136,7 +157,7 @@ Scope {
     Rectangle {
       Layout.fillWidth: true
       height: 40
-      radius: 12
+      radius: 0
       color: root.theme.bgSurface
 
       Row {
@@ -151,11 +172,11 @@ Scope {
             required property var modelData
             property bool urgentBlink: false
 
-            width: modelData.focused ? 32 : 24
+            width: 24
             height: 24
-            radius: 12
+            radius: 4
             color: modelData.focused ? root.theme.accentPrimary :
-                   modelData.urgent && urgentBlink ? root.theme.accentRed : root.theme.bgBase
+                   modelData.urgent && urgentBlink ? root.theme.accentRed : root.theme.bgBorder
 
             Behavior on color { ColorAnimation { duration: 150 } }
 
@@ -234,13 +255,79 @@ Scope {
     Item { Layout.fillHeight: true }
 
     // ── システム情報（音量・明るさ・CPU・ネットワーク・バッテリー・温度） ──
-    RowLayout {
+    ColumnLayout {
       Layout.fillWidth: true
-      spacing: 6
+      spacing: 8
 
-      // 音量
-      Rectangle {
+  
+      RowLayout {
+        Layout.fillWidth: true
+        spacing: 8
+
+    // ネットワーク
+    Rectangle {
+      Layout.fillWidth: true
+      height: 32
+      radius: 8
+      color: root.theme.bgSurface
+
+      Row {
+        anchors.centerIn: parent
+        spacing: 8
+        Text {
+          text: {
+            if (SystemInfo.networkType === "ethernet") return "󰈀"
+            if (SystemInfo.networkType === "wifi") return "󰖩"
+            return "󰖪"
+          }
+          color: SystemInfo.networkType === "disconnected" ? root.theme.textMuted : root.theme.accentGreen
+          font.pixelSize: 14
+          font.family: root.font
+        }
+        Text {
+          text: SystemInfo.networkInfo
+          color: root.theme.textPrimary
+          font.pixelSize: 12
+          font.family: root.font
+          elide: Text.ElideRight
+        }
+      }
+    }
+
+    // IME
+    Rectangle {
+      Layout.fillWidth: true
+      height: 32
+      radius: 8
+      color: root.theme.bgSurface
+
+      Row {
+        anchors.centerIn: parent
+        spacing: 8
+        Text {
+          text: "󰌌"
+          color: root.theme.accentPrimary
+          font.pixelSize: 14
+          font.family: root.font
+        }
+        Text {
+          id: imeText
+          text: root.imeName
+          color: root.theme.textPrimary
+          font.pixelSize: 12
+          font.family: root.font
+        }
+      }
+    }
+      }
+
+      RowLayout {
+        Layout.fillWidth: true
+        spacing: 8
+
+        Rectangle {
         Layout.preferredWidth: 65
+        Layout.fillWidth: false
         height: 32
         radius: 8
         color: root.theme.bgSurface
@@ -286,11 +373,11 @@ Scope {
             sink.audio.volume = Math.max(0, Math.min(1.5, sink.audio.volume + delta));
           }
         }
-      }
+        }
 
-      // 明るさ
-      Rectangle {
+        Rectangle {
         Layout.preferredWidth: 65
+        Layout.fillWidth: false
         height: 32
         radius: 8
         color: root.theme.bgSurface
@@ -322,40 +409,11 @@ Scope {
             brightnessSetProc.running = true;
           }
         }
-      }
-
-      // ネットワーク
-      Rectangle {
-        Layout.fillWidth: true
-        height: 32
-        radius: 8
-        color: root.theme.bgSurface
-
-        Row {
-          anchors.centerIn: parent
-          spacing: 8
-          Text {
-            text: {
-              if (SystemInfo.networkType === "ethernet") return "󰈀"
-              if (SystemInfo.networkType === "wifi") return "󰖩"
-              return "󰖪"
-            }
-            color: SystemInfo.networkType === "disconnected" ? root.theme.textMuted : root.theme.accentGreen
-            font.pixelSize: 14
-            font.family: root.font
-          }
-          Text {
-            text: SystemInfo.networkInfo
-            color: root.theme.textPrimary
-            font.pixelSize: 12
-            font.family: root.font
-          }
         }
-      }
 
-      // バッテリー
-      Rectangle {
+        Rectangle {
         Layout.preferredWidth: 65
+        Layout.fillWidth: false
         height: 32
         radius: 8
         color: root.theme.bgSurface
@@ -381,11 +439,14 @@ Scope {
             font.family: root.font
           }
         }
+        }
+              Item {
+                Layout.fillWidth: true
+              }
+            }
+          }
+        }
       }
-    }
-  }
-}
-
     }
   }
 }
