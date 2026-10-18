@@ -114,7 +114,7 @@ Scope {
       mask: Region {}
 
       anchors {
-        right: true
+        left: true
         top: true
         bottom: true
       }

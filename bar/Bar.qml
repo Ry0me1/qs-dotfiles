@@ -106,58 +106,27 @@ Scope {
       required property var modelData
       screen: modelData
       visible: root.barVisible
-
       anchors {
         top: true
         right: true
         bottom: true
       }
 
-      implicitWidth: 350
+      implicitWidth: 300
       color: root.theme.bgBase
 
       Item {
   anchors.fill: parent
-  anchors.margins: 12
+  anchors.margins: 8
 
   ColumnLayout {
     anchors.fill: parent
-    spacing: 12
+    spacing: 6
 
-    // ── 時計 ──
-    Rectangle {
-      Layout.fillWidth: true
-      height: 60
-      radius: 12
-      color: root.theme.bgSurface
-
-      Column {
-        anchors.centerIn: parent
-        spacing: 4
-
-        Text {
-          anchors.horizontalCenter: parent.horizontalCenter
-          text: Time.timeString
-          color: root.theme.textPrimary
-          font.pixelSize: 24
-          font.bold: true
-          font.family: root.font
-        }
-        Text {
-          anchors.horizontalCenter: parent.horizontalCenter
-          text: Time.dateString
-          color: root.theme.textSecondary
-          font.pixelSize: 12
-          font.family: root.font
-        }
-      }
-    }
-
-    // ── ワークスペース ──
+    // workspace
     Rectangle {
       Layout.fillWidth: true
       height: 40
-      radius: 0
       color: root.theme.bgSurface
 
       Row {
@@ -210,11 +179,10 @@ Scope {
       }
     }
 
-    // ── Now Playing ──
+    // now playing
     Rectangle {
       Layout.fillWidth: true
       height: 48
-      radius: 12
       color: root.theme.bgSurface
       visible: root.activePlayer !== null
 
@@ -251,18 +219,39 @@ Scope {
       }
     }
 
-    // ── スペーサー（下部を押し下げる） ──
+    // spacer
     Item { Layout.fillHeight: true }
 
-    // ── システム情報（音量・明るさ・CPU・ネットワーク・バッテリー・温度） ──
-    ColumnLayout {
-      Layout.fillWidth: true
-      spacing: 8
+// ── 時計（下部、1行） ──
+Rectangle {
+  Layout.fillWidth: true
+  height: 32
+  color: root.theme.bgSurface
+
+  Row {
+    anchors.centerIn: parent
+    spacing: 8
+
+    Text {
+      text: Time.timeString
+      color: root.theme.textPrimary
+      font.pixelSize: 16
+      font.bold: true
+      font.family: root.font
+    }
+    Text {
+      text: Time.dateString
+      color: root.theme.textSecondary
+      font.pixelSize: 12
+      font.family: root.font
+    }
+  }
+}
 
   
       RowLayout {
         Layout.fillWidth: true
-        spacing: 8
+        spacing: 6
 
     // ネットワーク
     Rectangle {
@@ -323,13 +312,12 @@ Scope {
 
       RowLayout {
         Layout.fillWidth: true
-        spacing: 8
+        spacing: 6
 
         Rectangle {
-        Layout.preferredWidth: 65
+        Layout.preferredWidth: 60
         Layout.fillWidth: false
         height: 32
-        radius: 8
         color: root.theme.bgSurface
 
         Row {
@@ -376,10 +364,9 @@ Scope {
         }
 
         Rectangle {
-        Layout.preferredWidth: 65
+        Layout.preferredWidth: 60
         Layout.fillWidth: false
         height: 32
-        radius: 8
         color: root.theme.bgSurface
         visible: brightnessFile.path !== ""
 
@@ -412,10 +399,9 @@ Scope {
         }
 
         Rectangle {
-        Layout.preferredWidth: 65
+        Layout.preferredWidth: 60
         Layout.fillWidth: false
         height: 32
-        radius: 8
         color: root.theme.bgSurface
 
         Row {
@@ -440,9 +426,58 @@ Scope {
           }
         }
         }
-              Item {
-                Layout.fillWidth: true
-              }
+
+// ログアウト
+Rectangle {
+  Layout.fillWidth: true
+  height: 40
+  radius: 8
+  color: logoutHover.containsMouse ? root.theme.bgHover : root.theme.bgSurface
+
+  Behavior on color { ColorAnimation { duration: 100 } }
+
+  Text {
+    anchors.centerIn: parent
+    text: "󰍃"
+    color: root.theme.textPrimary
+    font.pixelSize: 16
+    font.family: root.font
+  }
+
+  MouseArea {
+    id: logoutHover
+    anchors.fill: parent
+    hoverEnabled: true
+    cursorShape: Qt.PointingHandCursor
+    onClicked: Quickshell.execDetached(["hyprctl", "dispatch", "exit"])
+  }
+}
+
+// 電源
+Rectangle {
+  Layout.fillWidth: true
+  height: 40
+  radius: 8
+  color: powerHover.containsMouse ? root.theme.bgHover : root.theme.bgSurface
+
+  Behavior on color { ColorAnimation { duration: 100 } }
+
+  Text {
+    anchors.centerIn: parent
+    text: "󰐥"
+    color: root.theme.accentRed
+    font.pixelSize: 16
+    font.family: root.font
+  }
+
+  MouseArea {
+    id: powerHover
+    anchors.fill: parent
+    hoverEnabled: true
+    cursorShape: Qt.PointingHandCursor
+    onClicked: Quickshell.execDetached(["systemctl", "poweroff"])
+  }
+}
             }
           }
         }
