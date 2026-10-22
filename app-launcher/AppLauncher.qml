@@ -18,7 +18,8 @@ Scope {
       launcherPanel.visible = !launcherPanel.visible
       if (launcherPanel.visible) {
         searchInput.text = ""
-        selectedIndex = -1
+        // start with first item selected so Enter works immediately
+        root.selectedIndex = 0
         searchInput.forceActiveFocus()
       }
     }
@@ -26,31 +27,49 @@ Scope {
 
   property int selectedIndex: 0
 
+  // Sort once at startup, not on every keystroke.
+  readonly property var allAppsSorted: {
+    const all = [...DesktopEntries.applications.values];
+    all.sort((a, b) => (a.name ?? "").localeCompare(b.name ?? ""));
+    return all;
+  }
+
   ScriptModel {
     id: filteredApps
     objectProp: "id"
     values: {
-      const all = [...DesktopEntries.applications.values];
       const q = searchInput.text.trim().toLowerCase();
-      if (q === "") return all.sort((a, b) => a.name.localeCompare(b.name));
-      return all.filter(d =>
-        (d.name && d.name.toLowerCase().includes(q)) ||
-        (d.genericName && d.genericName.toLowerCase().includes(q)) ||
-        (d.keywords && d.keywords.some(k => k.toLowerCase().includes(q))) ||
-        (d.categories && d.categories.some(c => c.toLowerCase().includes(q)))
-      ).sort((a, b) => {
-        const an = a.name.toLowerCase();
-        const bn = b.name.toLowerCase();
-        const aStarts = an.startsWith(q);
-        const bStarts = bn.startsWith(q);
-        if (aStarts && !bStarts) return -1;
-        if (!aStarts && bStarts) return 1;
+      if (q === "") return root.allAppsSorted;
+      const out = [];
+      for (const d of root.allAppsSorted) {
+        const name = (d.name ?? "").toLowerCase();
+        const generic = (d.genericName ?? "").toLowerCase();
+        const keywords = d.keywords ?? [];
+        const cats = d.categories ?? [];
+        if (
+          name.includes(q) ||
+          generic.includes(q) ||
+          keywords.some(k => k.toLowerCase().includes(q)) ||
+          cats.some(c => c.toLowerCase().includes(q))
+        ) {
+          out.push(d);
+        }
+      }
+      // Stable sort: prefix matches first, then alphabetical.
+      out.sort((a, b) => {
+        const an = (a.name ?? "").toLowerCase();
+        const bn = (b.name ?? "").toLowerCase();
+        const ap = an.startsWith(q) ? 0 : 1;
+        const bp = bn.startsWith(q) ? 0 : 1;
+        if (ap !== bp) return ap - bp;
         return an.localeCompare(bn);
       });
+      return out;
     }
   }
 
   function launchApp(entry) {
+    if (!entry) return;
     entry.execute();
     launcherPanel.visible = false;
   }
@@ -74,7 +93,7 @@ Scope {
       right: true
     }
 
-    // Dark overlay backdrop
+    // Backdrop click closes
     MouseArea {
       anchors.fill: parent
       onClicked: launcherPanel.visible = false
@@ -85,12 +104,11 @@ Scope {
       }
     }
 
-    // Centered launcher box
     Rectangle {
       id: launcherBox
       anchors.centerIn: parent
-      width: 580
-      height: 480
+      width: 700
+      height: 550
       radius: 16
       color: root.theme.bgBase
       border.color: root.theme.bgBorder
@@ -101,7 +119,6 @@ Scope {
         anchors.margins: 16
         spacing: 12
 
-        // Header
         Text {
           text: "  Applications"
           color: root.theme.accentPrimary
@@ -110,7 +127,6 @@ Scope {
           font.bold: true
         }
 
-        // Search bar
         Rectangle {
           Layout.fillWidth: true
           height: 44
@@ -145,7 +161,7 @@ Scope {
               font.pixelSize: 15
               font.family: root.font
               clip: true
-              focus: true
+              // focus is set explicitly by IpcHandler.toggle() -> forceActiveFocus()
               Accessible.role: Accessible.EditableText
               Accessible.name: "Search applications"
 
@@ -158,36 +174,43 @@ Scope {
                 verticalAlignment: Text.AlignVCenter
               }
 
-              onTextChanged: root.selectedIndex = text === "" ? -1 : 0
-
-              Keys.onEscapePressed: launcherPanel.visible = false
+              onTextChanged: {
+                // Empty query -> first item selected; non-empty -> first result.
+                root.selectedIndex = 0
+                resultsList.positionViewAtBeginning()
+              }
 
               Keys.onPressed: event => {
+                const count = resultsList.count;
+
                 if (event.key === Qt.Key_Down) {
                   event.accepted = true;
-                  root.selectedIndex = Math.min(root.selectedIndex + 1, resultsList.count - 1);
+                  if (count > 0)
+                    root.selectedIndex = Math.min(root.selectedIndex + 1, count - 1);
                   resultsList.positionViewAtIndex(root.selectedIndex, ListView.Contain);
                 } else if (event.key === Qt.Key_Up) {
                   event.accepted = true;
-                  root.selectedIndex = Math.max(root.selectedIndex - 1, 0);
+                  if (count > 0)
+                    root.selectedIndex = Math.max(root.selectedIndex - 1, 0);
+                  resultsList.positionViewAtIndex(root.selectedIndex, ListView.Contain);
+                } else if (event.key === Qt.Key_Tab) {
+                  event.accepted = true;
+                  if (count > 0)
+                    root.selectedIndex = Math.min(root.selectedIndex + 1, count - 1);
                   resultsList.positionViewAtIndex(root.selectedIndex, ListView.Contain);
                 } else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
                   event.accepted = true;
-                  if (root.selectedIndex >= 0) {
-                    const entry = filteredApps.values[root.selectedIndex];
-                    if (entry) root.launchApp(entry);
-                  }
-                } else if (event.key === Qt.Key_Tab) {
+                  const entry = filteredApps.values[root.selectedIndex];
+                  if (entry) root.launchApp(entry);
+                } else if (event.key === Qt.Key_Escape) {
                   event.accepted = true;
-                  root.selectedIndex = Math.min(root.selectedIndex + 1, resultsList.count - 1);
-                  resultsList.positionViewAtIndex(root.selectedIndex, ListView.Contain);
+                  launcherPanel.visible = false;
                 }
               }
             }
           }
         }
 
-        // Results count
         Text {
           text: resultsList.count + " application" + (resultsList.count !== 1 ? "s" : "")
           color: root.theme.textMuted
@@ -195,7 +218,6 @@ Scope {
           font.family: root.font
         }
 
-        // App list
         ListView {
           id: resultsList
           Layout.fillWidth: true
@@ -207,6 +229,7 @@ Scope {
           currentIndex: root.selectedIndex
           highlightMoveDuration: 150
           highlightMoveVelocity: -1
+          cacheBuffer: 400
 
           highlight: Rectangle {
             radius: 8
@@ -243,30 +266,31 @@ Scope {
               anchors.rightMargin: 12
               spacing: 12
 
-              // App icon
               Item {
                 width: 28
                 height: 28
                 Layout.alignment: Qt.AlignVCenter
 
                 IconImage {
+                  id: appIcon
                   anchors.fill: parent
-                  source: Quickshell.iconPath(delegateRoot.modelData.icon ?? "", true)
-                  visible: (delegateRoot.modelData.icon ?? "") !== ""
+                  source: {
+                    const i = delegateRoot.modelData.icon ?? "";
+                    return i !== "" ? Quickshell.iconPath(i, true) : "";
+                  }
+                  visible: source !== "" && status !== Image.Error
                 }
 
-                // Fallback icon
                 Text {
                   anchors.centerIn: parent
                   text: ""
                   color: root.theme.accentPrimary
                   font.pixelSize: 20
                   font.family: root.font
-                  visible: (delegateRoot.modelData.icon ?? "") === ""
+                  visible: !appIcon.visible
                 }
               }
 
-              // App info
               ColumnLayout {
                 Layout.fillWidth: true
                 Layout.alignment: Qt.AlignVCenter
@@ -299,11 +323,12 @@ Scope {
               hoverEnabled: true
               cursorShape: Qt.PointingHandCursor
               onClicked: root.launchApp(delegateRoot.modelData)
-              onPositionChanged: root.selectedIndex = delegateRoot.index
+              // Only update selection when actually entering the item,
+              // not on every mouse movement (which caused "selection jumping").
+              onEntered: root.selectedIndex = delegateRoot.index
             }
           }
 
-          // Empty state
           Text {
             anchors.centerIn: parent
             text: "  No applications found"
@@ -314,7 +339,6 @@ Scope {
           }
         }
 
-        // Footer hint
         RowLayout {
           Layout.fillWidth: true
           spacing: 16

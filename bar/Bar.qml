@@ -23,52 +23,6 @@ Scope {
     objects: [Pipewire.defaultAudioSink]
   }
 
-  // ── Brightness ─────────────────────────────────────────────────────────
-  property real brightnessValue: 0
-  property real brightnessMax: 1
-
-  FileView {
-    id: brightnessFile
-    path: ""
-    watchChanges: true
-    onFileChanged: brightnessReadProc.running = true
-  }
-
-  Process {
-    id: brightnessReadProc
-    command: ["brightnessctl", "get"]
-    running: false
-    stdout: StdioCollector {
-      onStreamFinished: {
-        const val = parseInt(text.trim());
-        if (!isNaN(val) && root.brightnessMax > 0)
-          root.brightnessValue = val / root.brightnessMax;
-      }
-    }
-  }
-
-  Process {
-    id: brightnessSetProc
-    running: false
-  }
-
-  Process {
-    id: backlightDiscovery
-    command: ["sh", "-c", "p=$(ls -d /sys/class/backlight/*/brightness 2>/dev/null | head -1); [ -n \"$p\" ] && echo \"$p\" && cat \"${p%brightness}max_brightness\""]
-    running: true
-    stdout: StdioCollector {
-      onStreamFinished: {
-        const lines = text.trim().split("\n");
-        if (lines.length >= 2) {
-          const max = parseInt(lines[1]);
-          if (!isNaN(max) && max > 0) root.brightnessMax = max;
-          brightnessFile.path = lines[0];
-          brightnessReadProc.running = true;
-        }
-      }
-    }
-  }
-
   // ── IME ────────────────────────────────────────────────────────────────
   property string imeName: "IME"
 
@@ -192,33 +146,49 @@ Scope {
           // spacer
           Item { Layout.fillHeight: true }
 
-          // ── Clock (2 lines: HH / MM) ───────────────────────────────────
-          ModRow {
-            implicitHeight: 50
-            content: [
-              ColumnLayout {
-                spacing: 0
-                Text {
-                  Layout.fillWidth: true
-                  horizontalAlignment: Text.AlignHCenter
-                  text: Time.timeString ? Time.timeString.slice(0, 2) : ""
-                  color: root.theme.textPrimary
-                  font.pixelSize: 18
-                  font.family: root.font
-                  font.bold: true
-                }
-                Text {
-                  Layout.fillWidth: true
-                  horizontalAlignment: Text.AlignHCenter
-                  text: Time.timeString ? Time.timeString.slice(3, 5) : ""
-                  color: root.theme.textPrimary
-                  font.pixelSize: 18
-                  font.family: root.font
-                  font.bold: true
-                }
-              }
-            ]
-          }
+          // ── Clock (date + HH / MM) ─────────────────────────────────────────────
+ModRow {
+  implicitHeight: 65
+  content: [
+    ColumnLayout {
+      spacing: 1
+
+      Text {
+        Layout.fillWidth: true
+        horizontalAlignment: Text.AlignHCenter
+        text: Qt.formatDateTime(sysClock.date, "MM/dd")
+        color: root.theme.textMuted
+        font.pixelSize: 12
+        font.family: root.font
+      }
+
+      Text {
+        Layout.fillWidth: true
+        horizontalAlignment: Text.AlignHCenter
+        text: Qt.formatDateTime(sysClock.date, "HH")
+        color: root.theme.textPrimary
+        font.pixelSize: 16
+        font.family: root.font
+        font.bold: true
+      }
+
+      Text {
+        Layout.fillWidth: true
+        horizontalAlignment: Text.AlignHCenter
+        text: Qt.formatDateTime(sysClock.date, "mm")
+        color: root.theme.textPrimary
+        font.pixelSize: 16
+        font.family: root.font
+        font.bold: true
+      }
+    }
+  ]
+
+  SystemClock {
+    id: sysClock
+    precision: SystemClock.Minutes
+  }
+}
 
           // ── Network (icon only, hover = tooltip with SSID) ─────────────────────
 ModRow {
@@ -237,9 +207,6 @@ ModRow {
       font.family: root.font
     }
   ]
-
-  ToolTip.visible: hovered
-  ToolTip.text: SystemInfo.networkInfo
 }
 
           // ── IME logo (system tray, SystemServices category) ────────────
@@ -272,10 +239,8 @@ ModRow {
           }
             // ── Volume (icon + value, click = mute) ────────────────────────────────
 ModRow {
-  implicitHeight: 40
+  implicitHeight: 30
   content: [
-    ColumnLayout {
-      spacing: 0
       Text {
         Layout.fillWidth: true
         horizontalAlignment: Text.AlignHCenter
@@ -290,22 +255,7 @@ ModRow {
         font.pixelSize: 16
         font.family: root.font
       }
-      Text {
-        Layout.fillWidth: true
-        horizontalAlignment: Text.AlignHCenter
-        text: {
-          const sink = Pipewire.defaultAudioSink;
-          if (!sink || !sink.audio) return "–";
-          if (sink.audio.muted) return "MUT";
-          return Math.round(sink.audio.volume * 100);
-        }
-        color: root.theme.textPrimary
-        font.pixelSize: 16
-        font.family: root.font
-      }
-    }
   ]
-
             MouseArea {
               anchors.fill: parent
               onClicked: {
@@ -314,33 +264,6 @@ ModRow {
               }
             }
           }
-
-          // ── Backlight (icon + value) ──
-ModRow {
-  implicitHeight: 40
-  visible: brightnessFile.path !== ""
-  content: [
-    ColumnLayout {
-      spacing: 0
-      Text {
-        Layout.fillWidth: true
-        horizontalAlignment: Text.AlignHCenter
-        text: "󰃠"
-        color: root.theme.accentOrange
-        font.pixelSize: 16
-        font.family: root.font
-      }
-      Text {
-        Layout.fillWidth: true
-        horizontalAlignment: Text.AlignHCenter
-        text: Math.round(root.brightnessValue * 100)
-        color: root.theme.textPrimary
-        font.pixelSize: 16
-        font.family: root.font
-      }
-    }
-  ]
-}
 
           // ── Battery (icon + value) ─────────────────────────────────────────────
 ModRow {

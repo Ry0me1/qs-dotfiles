@@ -14,24 +14,6 @@ Singleton {
   property string batteryIcon: "󰂎"
   property bool batteryCharging: false
 
-  // Network Info (ethernet takes priority over wifi)
-  Process {
-    id: netProc
-    command: ["sh", "-c", "eth=$(nmcli -t -f type,state dev 2>/dev/null | grep '^ethernet:connected'); if [ -n \"$eth\" ]; then echo 'ethernet:Ethernet'; else wifi=$(nmcli -t -f type,state,connection device 2>/dev/null | grep '^wifi:connected:' | cut -d: -f3); if [ -n \"$wifi\" ]; then echo \"wifi:$wifi\"; else echo 'disconnected:'; fi; fi"]
-    running: true
-
-    stdout: StdioCollector {
-      onStreamFinished: {
-        const result = text.trim()
-        const colonIdx = result.indexOf(':')
-        const type = result.substring(0, colonIdx)
-        const info = result.substring(colonIdx + 1)
-        root.networkType = type
-        root.networkInfo = info || "Disconnected"
-      }
-    }
-  }
-
   // Battery
   Process {
     id: batteryProc
